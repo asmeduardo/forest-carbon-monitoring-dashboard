@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard de Monitoramento Florestal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <style>
+      :root {
+        --primary-color: #2c9a56;
+        --secondary-color: #8c4d27;
+        --light-color: #e8f5e9;
+        --dark-color: #1b5e20;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+
+      header {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.8rem;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+
+      .dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .isometric-container {
+        background-color: #e3f2fd;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .isometric-scene {
+        position: relative;
+        height: 400px;
+        overflow: hidden;
+        background: linear-gradient(to bottom, #b3e5fc, #81d4fa);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+
+      .floating-island {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 400px;
+        height: 200px;
+        background-color: #8bc34a;
+        border-radius: 50%;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        overflow: visible;
+        z-index: 1;
+      }
+
+      .ground {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, #689f38, #33691e);
+        border-radius: 50%;
+        overflow: hidden;
+      }
+
+      .isometric-grid {
+        position: absolute;
+        top: -50px;
+        left: -50px;
+        width: 500px;
+        height: 300px;
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        grid-template-rows: repeat(6, 1fr);
+        transform: rotateX(60deg) rotateZ(45deg);
+      }
+
+      .tree,
+      .stump {
+        position: absolute;
+        transform-style: preserve-3d;
+        transform: translateZ(0);
+        transition: all 0.5s;
+      }
+
+      .tree {
+        width: 40px;
+        height: 80px;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 100"><rect x="22" y="60" width="6" height="40" fill="%23795548"/><polygon points="25,0 45,60 5,60" fill="%232e7d32"/></svg>')
+          no-repeat center center / contain;
+        z-index: 2;
+      }
+
+      .stump {
+        width: 30px;
+        height: 30px;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="%23795548"/><circle cx="20" cy="20" r="10" fill="%23a1887f"/><circle cx="20" cy="20" r="5" fill="%238d6e63"/></svg>')
+          no-repeat center center / contain;
+        z-index: 1;
+      }
+
+      .floating-clouds {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+      }
+
+      .cloud {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        opacity: 0.8;
+        filter: blur(5px);
+      }
+
+      .chart-container {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .chart-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+
+      .time-selectors {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .time-btn {
+        padding: 0.5rem 1rem;
+        background-color: #e0e0e0;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .time-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .time-btn:hover {
+        background-color: #c8e6c9;
+      }
+
+      .data-entry {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .form-group {
+        margin-bottom: 1rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
+
+      input[type="number"],
+      input[type="date"],
+      select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+      }
+
+      .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background-color: #1b7940;
+      }
+
+      .stats-container {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 1rem;
+      }
+
+      .stat-card {
+        flex: 1;
+        max-width: 200px;
+        background-color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        margin: 0 0.5rem;
+      }
+
+      .stat-card.planted {
+        border-top: 4px solid var(--primary-color);
+      }
+
+      .stat-card.cut {
+        border-top: 4px solid var(--secondary-color);
+      }
+
+      .stat-card.balance {
+        border-top: 4px solid #2196f3;
+      }
+
+      .stat-card.co2 {
+        border-top: 4px solid #009688;
+      }
+
+      .stat-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+      }
+
+      .stat-label {
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      .co2-indicator {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        background-color: #e8f5e9;
+        text-align: center;
+      }
+
+      .co2-meter {
+        height: 30px;
+        width: 100%;
+        background-color: #ddd;
+        border-radius: 15px;
+        margin: 0.5rem 0;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .co2-meter-fill {
+        height: 100%;
+        background: linear-gradient(to right, #f44336, #ffeb3b, #4caf50);
+        border-radius: 15px;
+        transition: width 1s ease-in-out;
+        position: relative;
+      }
+
+      .co2-meter-marker {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        width: 3px;
+        background-color: #000;
+        z-index: 2;
+      }
+
+      @media (max-width: 768px) {
+        .stats-container {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .stat-card {
+          width: 100%;
+          max-width: 100%;
+          margin-bottom: 1rem;
+        }
+
+        .chart-controls {
+          flex-direction: column;
+          gap: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Dashboard de Monitoramento Florestal</h1>
+    </header>
+
+    <div class="container">
+      <div class="dashboard">
+        <div class="isometric-container">
+          <h2>Paisagem Florestal</h2>
+          <div class="isometric-scene">
+            <div class="floating-clouds" id="clouds"></div>
+            <div class="floating-island">
+              <div class="ground"></div>
+              <div class="isometric-grid" id="forestGrid"></div>
+            </div>
+          </div>
+          <p>Representação visual da floresta baseada nos dados atuais</p>
+        </div>
+
+        <div class="stats-container">
+          <div class="stat-card planted">
+            <div class="stat-label">Árvores Plantadas</div>
+            <div class="stat-value" id="plantedValue">0</div>
+            <div class="stat-label">no período selecionado</div>
+          </div>
+          <div class="stat-card cut">
+            <div class="stat-label">Árvores Cortadas</div>
+            <div class="stat-value" id="cutValue">0</div>
+            <div class="stat-label">no período selecionado</div>
+          </div>
+          <div class="stat-card balance">
+            <div class="stat-label">Balanço</div>
+            <div class="stat-value" id="balanceValue">0</div>
+            <div class="stat-label">no período selecionado</div>
+          </div>
+          <div class="stat-card co2">
+            <div class="stat-label">Pegada de CO₂</div>
+            <div class="stat-value" id="co2Value">0</div>
+            <div class="stat-label">toneladas no período</div>
+          </div>
+        </div>
+
+        <div class="co2-indicator">
+          <h3>Impacto Ambiental - Pegada de Carbono</h3>
+          <div class="co2-meter">
+            <div
+              class="co2-meter-fill"
+              id="co2MeterFill"
+              style="width: 50%"
+            ></div>
+            <div
+              class="co2-meter-marker"
+              id="co2Neutral"
+              style="left: 50%"
+            ></div>
+          </div>
+          <div id="co2Status">Impacto neutro de carbono</div>
+        </div>
+
+        <div class="chart-container">
+          <div class="chart-controls">
+            <h2>Estatísticas de Plantio e Corte</h2>
+            <div class="time-selectors">
+              <button class="time-btn active" data-period="day">Diário</button>
+              <button class="time-btn" data-period="week">Semanal</button>
+              <button class="time-btn" data-period="month">Mensal</button>
+              <button class="time-btn" data-period="year">Anual</button>
+            </div>
+          </div>
+          <canvas id="forestChart"></canvas>
+        </div>
+
+        <div class="data-entry">
+          <h2>Cadastro de Dados</h2>
+          <form id="forestDataForm">
+            <div class="form-group">
+              <label for="date">Data:</label>
+              <input type="date" id="date" required />
+            </div>
+            <div class="form-group">
+              <label for="action">Ação:</label>
+              <select id="action" required>
+                <option value="planted">Árvores Plantadas</option>
+                <option value="cut">Árvores Cortadas</option>
+              </select>
+            </div>
+            <div id="co2InfoContainer" class="form-group">
+              <p id="co2EstimateInfo" class="co2-info">
+                Impacto estimado: <span id="co2Estimate">0</span> kg de CO₂
+              </p>
+            </div>
+            <div class="form-group">
+              <label for="quantity">Quantidade:</label>
+              <input type="number" id="quantity" min="1" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Cadastrar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Dados simulados de árvores plantadas e cortadas
+      let forestData = [
+        { date: "2025-04-01", planted: 20, cut: 5 },
+        { date: "2025-04-02", planted: 15, cut: 8 },
+        { date: "2025-04-03", planted: 25, cut: 3 },
+        { date: "2025-04-04", planted: 10, cut: 12 },
+        { date: "2025-04-05", planted: 30, cut: 6 },
+        { date: "2025-04-06", planted: 18, cut: 4 },
+        { date: "2025-04-07", planted: 22, cut: 7 },
+        { date: "2025-04-08", planted: 17, cut: 9 },
+        { date: "2025-04-09", planted: 28, cut: 5 },
+        { date: "2025-04-10", planted: 12, cut: 10 },
+        { date: "2025-04-11", planted: 23, cut: 8 },
+        { date: "2025-04-12", planted: 19, cut: 6 },
+        { date: "2025-04-13", planted: 27, cut: 4 },
+        { date: "2025-04-14", planted: 14, cut: 11 },
+        { date: "2025-04-15", planted: 21, cut: 7 },
+        { date: "2025-04-16", planted: 16, cut: 9 },
+        { date: "2025-04-17", planted: 24, cut: 6 },
+        { date: "2025-04-18", planted: 13, cut: 8 },
+        { date: "2025-04-19", planted: 29, cut: 5 },
+        { date: "2025-04-20", planted: 18, cut: 7 },
+        { date: "2025-04-21", planted: 26, cut: 4 },
+        { date: "2025-04-22", planted: 15, cut: 10 },
+        { date: "2025-04-23", planted: 22, cut: 6 },
+        { date: "2025-04-24", planted: 17, cut: 8 },
+        { date: "2025-04-25", planted: 25, cut: 5 },
+        { date: "2025-04-26", planted: 14, cut: 9 },
+        { date: "2025-04-27", planted: 20, cut: 7 },
+        { date: "2025-04-28", planted: 28, cut: 4 },
+        { date: "2025-04-29", planted: 16, cut: 8 },
+        { date: "2025-04-30", planted: 23, cut: 6 },
+      ];
+
+      // Variáveis globais
+      let currentPeriod = "day";
+      let chart = null;
+
+      // Constantes para cálculo de CO2
+      const CO2_PER_TREE_PER_YEAR = 21.8; // kg de CO2 absorvido por árvore por ano
+      const CO2_LOSS_PER_CUT_TREE = 150; // kg de CO2 liberado por árvore cortada
+
+      // Inicializar a página quando o DOM estiver carregado
+      document.addEventListener("DOMContentLoaded", function () {
+        createClouds();
+        updateForestScene();
+        initializeChart();
+        updateStats();
+
+        // Event listeners
+        document.querySelectorAll(".time-btn").forEach((btn) => {
+          btn.addEventListener("click", function () {
+            document
+              .querySelectorAll(".time-btn")
+              .forEach((b) => b.classList.remove("active"));
+            this.classList.add("active");
+            currentPeriod = this.dataset.period;
+            updateChart();
+            updateStats();
+          });
+        });
+
+        // Atualizar informações de CO2 conforme o usuário seleciona ação e quantidade
+        const actionSelect = document.getElementById("action");
+        const quantityInput = document.getElementById("quantity");
+        const co2EstimateInfo = document.getElementById("co2Estimate");
+
+        function updateCO2Estimate() {
+          const action = actionSelect.value;
+          const quantity = parseInt(quantityInput.value) || 0;
+          let co2Impact = 0;
+
+          if (action === "planted") {
+            co2Impact = (quantity * CO2_PER_TREE_PER_YEAR).toFixed(1);
+            co2EstimateInfo.textContent = `+${co2Impact} kg de CO₂ absorvidos por ano`;
+            co2EstimateInfo.style.color = "#2e7d32";
+          } else {
+            co2Impact = (quantity * CO2_LOSS_PER_CUT_TREE).toFixed(1);
+            co2EstimateInfo.textContent = `-${co2Impact} kg de CO₂ liberados`;
+            co2EstimateInfo.style.color = "#c62828";
+          }
+        }
+
+        actionSelect.addEventListener("change", updateCO2Estimate);
+        quantityInput.addEventListener("input", updateCO2Estimate);
+
+        document
+          .getElementById("forestDataForm")
+          .addEventListener("submit", function (e) {
+            e.preventDefault();
+            const date = document.getElementById("date").value;
+            const action = document.getElementById("action").value;
+            const quantity = parseInt(
+              document.getElementById("quantity").value
+            );
+
+            // Verificar se já existe um registro para esta data
+            const existingIndex = forestData.findIndex(
+              (item) => item.date === date
+            );
+
+            if (existingIndex !== -1) {
+              // Atualizar registro existente
+              if (action === "planted") {
+                forestData[existingIndex].planted += quantity;
+              } else {
+                forestData[existingIndex].cut += quantity;
+              }
+            } else {
+              // Criar novo registro
+              const newData = { date: date, planted: 0, cut: 0 };
+              if (action === "planted") {
+                newData.planted = quantity;
+              } else {
+                newData.cut = quantity;
+              }
+              forestData.push(newData);
+              // Ordenar os dados por data
+              forestData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+
+            // Atualizar a visualização
+            updateChart();
+            updateForestScene();
+            updateStats();
+
+            // Resetar o formulário
+            this.reset();
+            alert("Dados cadastrados com sucesso!");
+          });
+
+        // Animação da ilha flutuante
+        animateFloatingIsland();
+      });
+
+      // Função para criar nuvens animadas
+      function createClouds() {
+        const cloudContainer = document.getElementById("clouds");
+        const numberOfClouds = 10;
+
+        for (let i = 0; i < numberOfClouds; i++) {
+          const cloud = document.createElement("div");
+          cloud.className = "cloud";
+
+          // Tamanho aleatório
+          const size = Math.random() * 100 + 50;
+          cloud.style.width = `${size}px`;
+          cloud.style.height = `${size / 2}px`;
+
+          // Posição inicial aleatória
+          const posX = Math.random() * 100;
+          const posY = Math.random() * 60 + 10;
+          cloud.style.left = `${posX}%`;
+          cloud.style.top = `${posY}%`;
+
+          cloudContainer.appendChild(cloud);
+
+          // Animação com GSAP
+          gsap.to(cloud, {
+            x: "+=100",
+            duration: Math.random() * 100 + 50,
+            repeat: -1,
+            ease: "none",
+            yoyo: true,
+          });
+
+          gsap.to(cloud, {
+            y: "+=15",
+            duration: Math.random() * 10 + 5,
+            repeat: -1,
+            ease: "sine.inOut",
+            yoyo: true,
+          });
+        }
+      }
+
+      // Função para animar a ilha flutuante
+      function animateFloatingIsland() {
+        const island = document.querySelector(".floating-island");
+        gsap.to(island, {
+          y: "+=20",
+          duration: 4,
+          repeat: -1,
+          ease: "sine.inOut",
+          yoyo: true,
+        });
+
+        gsap.to(island, {
+          rotation: 2,
+          duration: 6,
+          repeat: -1,
+          ease: "sine.inOut",
+          yoyo: true,
+        });
+      }
+
+      // Função para atualizar a cena da floresta
+      function updateForestScene() {
+        const grid = document.getElementById("forestGrid");
+        grid.innerHTML = ""; // Limpar o grid
+
+        // Calcular totais
+        const totalPlanted = forestData.reduce(
+          (sum, data) => sum + data.planted,
+          0
+        );
+        const totalCut = forestData.reduce((sum, data) => sum + data.cut, 0);
+
+        // Definir proporção de árvores vs troncos
+        const totalTrees = 60; // Total de elementos na cena
+        const currentBalance = Math.max(totalPlanted - totalCut, 0);
+        const cutPercentage = totalCut / (totalPlanted > 0 ? totalPlanted : 1);
+        const treesCount = Math.round(totalTrees * (1 - cutPercentage));
+        const stumpsCount = totalTrees - treesCount;
+
+        // Criar posições aleatórias únicas
+        const positions = [];
+        for (let i = 0; i < totalTrees; i++) {
+          let x, y;
+          do {
+            x = Math.floor(Math.random() * 10);
+            y = Math.floor(Math.random() * 6);
+          } while (positions.some((pos) => pos.x === x && pos.y === y));
+
+          positions.push({ x, y });
+        }
+
+        // Adicionar árvores
+        for (let i = 0; i < treesCount; i++) {
+          const tree = document.createElement("div");
+          tree.className = "tree";
+          tree.style.gridColumn = positions[i].x + 1;
+          tree.style.gridRow = positions[i].y + 1;
+          // Altura aleatória para mais realismo
+          const scale = 0.8 + Math.random() * 0.4;
+          tree.style.transform = `scale(${scale})`;
+          grid.appendChild(tree);
+        }
+
+        // Adicionar troncos
+        for (let i = treesCount; i < totalTrees; i++) {
+          const stump = document.createElement("div");
+          stump.className = "stump";
+          stump.style.gridColumn = positions[i].x + 1;
+          stump.style.gridRow = positions[i].y + 1;
+          grid.appendChild(stump);
+        }
+      }
+
+      // Função para inicializar o gráfico
+      function initializeChart() {
+        const ctx = document.getElementById("forestChart").getContext("2d");
+        chart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: "Árvores Plantadas",
+                backgroundColor: "#4caf50",
+                data: [],
+              },
+              {
+                label: "Árvores Cortadas",
+                backgroundColor: "#ff9800",
+                data: [],
+              },
+              {
+                label: "Pegada de CO₂ (ton)",
+                type: "line",
+                borderColor: "#009688",
+                backgroundColor: "rgba(0, 150, 136, 0.2)",
+                fill: true,
+                data: [],
+                yAxisID: "co2",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                stacked: false,
+                title: {
+                  display: true,
+                  text: "Data",
+                },
+              },
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Quantidade",
+                },
+              },
+              co2: {
+                position: "right",
+                beginAtZero: false,
+                title: {
+                  display: true,
+                  text: "CO₂ (toneladas)",
+                },
+                grid: {
+                  drawOnChartArea: false,
+                },
+              },
+            },
+          },
+        });
+
+        updateChart();
+      }
+
+      // Função para atualizar o gráfico com base no período selecionado
+      function updateChart() {
+        const labels = [];
+        const plantedData = [];
+        const cutData = [];
+        const co2Data = [];
+
+        let processedData;
+
+        switch (currentPeriod) {
+          case "day":
+            // Dados diários (últimos 30 dias)
+            processedData = [...forestData].slice(-30);
+
+            processedData.forEach((item) => {
+              labels.push(formatDate(item.date));
+              plantedData.push(item.planted);
+              cutData.push(item.cut);
+
+              // Calcular o impacto de CO2 (em toneladas)
+              const co2Absorbed =
+                (item.planted * CO2_PER_TREE_PER_YEAR) / 365 / 1000; // conversão para toneladas
+              const co2Released = (item.cut * CO2_LOSS_PER_CUT_TREE) / 1000; // conversão para toneladas
+              const co2Impact = co2Absorbed - co2Released;
+              co2Data.push(co2Impact);
+            });
+            break;
+
+          case "week":
+            // Agrupar por semana
+            processedData = groupDataByWeek(forestData);
+
+            processedData.forEach((item) => {
+              labels.push(`Semana ${item.week}`);
+              plantedData.push(item.planted);
+              cutData.push(item.cut);
+
+              // Calcular o impacto de CO2 (em toneladas)
+              const co2Absorbed =
+                (item.planted * CO2_PER_TREE_PER_YEAR) / 52 / 1000; // conversão para toneladas
+              const co2Released = (item.cut * CO2_LOSS_PER_CUT_TREE) / 1000; // conversão para toneladas
+              const co2Impact = co2Absorbed - co2Released;
+              co2Data.push(co2Impact);
+            });
+            break;
+
+          case "month":
+            // Agrupar por mês
+            processedData = groupDataByMonth(forestData);
+
+            processedData.forEach((item) => {
+              labels.push(item.month);
+              plantedData.push(item.planted);
+              cutData.push(item.cut);
+
+              // Calcular o impacto de CO2 (em toneladas)
+              const co2Absorbed =
+                (item.planted * CO2_PER_TREE_PER_YEAR) / 12 / 1000; // conversão para toneladas
+              const co2Released = (item.cut * CO2_LOSS_PER_CUT_TREE) / 1000; // conversão para toneladas
+              const co2Impact = co2Absorbed - co2Released;
+              co2Data.push(co2Impact);
+            });
+            break;
+
+          case "year":
+            // Agrupar por ano
+            processedData = groupDataByYear(forestData);
+
+            processedData.forEach((item) => {
+              labels.push(item.year.toString());
+              plantedData.push(item.planted);
+              cutData.push(item.cut);
+
+              // Calcular o impacto de CO2 (em toneladas)
+              const co2Absorbed = (item.planted * CO2_PER_TREE_PER_YEAR) / 1000; // conversão para toneladas
+              const co2Released = (item.cut * CO2_LOSS_PER_CUT_TREE) / 1000; // conversão para toneladas
+              const co2Impact = co2Absorbed - co2Released;
+              co2Data.push(co2Impact);
+            });
+            break;
+        }
+
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = plantedData;
+        chart.data.datasets[1].data = cutData;
+        chart.data.datasets[2].data = co2Data;
+        chart.update();
+      }
+
+      // Função para agrupar dados por semana
+      function groupDataByWeek(data) {
+        const weeks = {};
+
+        data.forEach((item) => {
+          const date = new Date(item.date);
+          const weekOfYear = getWeekNumber(date);
+          const key = `${date.getFullYear()}-${weekOfYear}`;
+
+          if (!weeks[key]) {
+            weeks[key] = {
+              week: weekOfYear,
+              year: date.getFullYear(),
+              planted: 0,
+              cut: 0,
+            };
+          }
+
+          weeks[key].planted += item.planted;
+          weeks[key].cut += item.cut;
+        });
+
+        return Object.values(weeks).sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year;
+          return a.week - b.week;
+        });
+      }
+
+      // Função para obter o número da semana de uma data
+      function getWeekNumber(date) {
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+      }
+
+      // Função para agrupar dados por mês
+      function groupDataByMonth(data) {
+        const months = {};
+        const monthNames = [
+          "Janeiro",
+          "Fevereiro",
+          "Março",
+          "Abril",
+          "Maio",
+          "Junho",
+          "Julho",
+          "Agosto",
+          "Setembro",
+          "Outubro",
+          "Novembro",
+          "Dezembro",
+        ];
+
+        data.forEach((item) => {
+          const date = new Date(item.date);
+          const monthIndex = date.getMonth();
+          const key = `${date.getFullYear()}-${monthIndex}`;
+
+          if (!months[key]) {
+            months[key] = {
+              month: `${monthNames[monthIndex]} ${date.getFullYear()}`,
+              monthIndex: monthIndex,
+              year: date.getFullYear(),
+              planted: 0,
+              cut: 0,
+            };
+          }
+
+          months[key].planted += item.planted;
+          months[key].cut += item.cut;
+        });
+
+        return Object.values(months).sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year;
+          return a.monthIndex - b.monthIndex;
+        });
+      }
+
+      // Função para agrupar dados por ano
+      function groupDataByYear(data) {
+        const years = {};
+
+        data.forEach((item) => {
+          const year = new Date(item.date).getFullYear();
+
+          if (!years[year]) {
+            years[year] = {
+              year: year,
+              planted: 0,
+              cut: 0,
+            };
+          }
+
+          years[year].planted += item.planted;
+          years[year].cut += item.cut;
+        });
+
+        return Object.values(years).sort((a, b) => a.year - b.year);
+      }
+
+      // Função para formatar datas
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return `${date.getDate()}/${date.getMonth() + 1}`;
+      }
+
+      // Função para atualizar estatísticas
+      function updateStats() {
+        let plantedTotal = 0;
+        let cutTotal = 0;
+        let period = 1; // Fator de período em dias
+
+        switch (currentPeriod) {
+          case "day":
+            // Dados do último dia
+            if (forestData.length > 0) {
+              const lastDay = forestData[forestData.length - 1];
+              plantedTotal = lastDay.planted;
+              cutTotal = lastDay.cut;
+            }
+            period = 1;
+            break;
+
+          case "week":
+            // Dados da última semana (7 dias)
+            const lastWeekData = forestData.slice(-7);
+            plantedTotal = lastWeekData.reduce(
+              (sum, item) => sum + item.planted,
+              0
+            );
+            cutTotal = lastWeekData.reduce((sum, item) => sum + item.cut, 0);
+            period = 7;
+            break;
+
+          case "month":
+            // Dados do último mês (30 dias)
+            const lastMonthData = forestData.slice(-30);
+            plantedTotal = lastMonthData.reduce(
+              (sum, item) => sum + item.planted,
+              0
+            );
+            cutTotal = lastMonthData.reduce((sum, item) => sum + item.cut, 0);
+            period = 30;
+            break;
+
+          case "year":
+            // Dados do último ano (considerando todos os dados)
+            plantedTotal = forestData.reduce(
+              (sum, item) => sum + item.planted,
+              0
+            );
+            cutTotal = forestData.reduce((sum, item) => sum + item.cut, 0);
+            period = 365;
+            break;
+        }
+
+        const balance = plantedTotal - cutTotal;
+
+        // Calcular pegada de CO2
+        const periodFactor = period / 365; // Fração do ano
+        const co2Absorbed =
+          (plantedTotal * CO2_PER_TREE_PER_YEAR * periodFactor) / 1000; // em toneladas
+        const co2Released = (cutTotal * CO2_LOSS_PER_CUT_TREE) / 1000; // em toneladas
+        const co2Impact = (co2Absorbed - co2Released).toFixed(2);
+
+        document.getElementById("plantedValue").textContent = plantedTotal;
+        document.getElementById("cutValue").textContent = cutTotal;
+        document.getElementById("balanceValue").textContent = balance;
+        document.getElementById("co2Value").textContent = co2Impact;
+
+        // Atualizar o medidor de CO2
+        updateCO2Meter(co2Impact);
+      }
+
+      // Função para atualizar o medidor de CO2
+      function updateCO2Meter(co2Impact) {
+        const meterFill = document.getElementById("co2MeterFill");
+        const co2Status = document.getElementById("co2Status");
+
+        // A escala vai de -10 a +10 toneladas
+        const maxRange = 10;
+        const percentage =
+          ((parseFloat(co2Impact) + maxRange) / (maxRange * 2)) * 100;
+
+        // Limitar entre 0 e 100%
+        const clampedPercentage = Math.min(Math.max(percentage, 0), 100);
+        meterFill.style.width = clampedPercentage + "%";
+
+        // Definir cor com base no impacto
+        if (co2Impact > 0) {
+          meterFill.style.background =
+            "linear-gradient(to right, #ffeb3b, #4caf50)";
+          co2Status.textContent = `Positivo: Absorvendo ${Math.abs(
+            co2Impact
+          )} toneladas de CO₂`;
+          co2Status.style.color = "#2e7d32";
+        } else if (co2Impact < 0) {
+          meterFill.style.background =
+            "linear-gradient(to right, #f44336, #ffeb3b)";
+          co2Status.textContent = `Negativo: Liberando ${Math.abs(
+            co2Impact
+          )} toneladas de CO₂`;
+          co2Status.style.color = "#c62828";
+        } else {
+          meterFill.style.background = "#ffeb3b";
+          co2Status.textContent = "Impacto neutro de carbono";
+          co2Status.style.color = "#f57f17";
+        }
+      }
+    </script>
+  </body>
+</html>
