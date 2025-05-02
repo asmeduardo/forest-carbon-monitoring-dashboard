@@ -23,9 +23,9 @@ use ForestMonitoring\Database\DatabaseConnection;
 use ForestMonitoring\Database\Repository\ForestRepository;
 use ForestMonitoring\Database\Repository\UserRepository;
 use ForestMonitoring\Services\AuthService;
+use ForestMonitoring\Services\CarbonCalculatorService;
 use ForestMonitoring\Controllers\ForestController;
 use ForestMonitoring\Controllers\UserController;
-use ForestMonitoring\Services\CarbonCalculatorService;
 
 // Initialize database connection
 $dbConnection = DatabaseConnection::getInstance();
