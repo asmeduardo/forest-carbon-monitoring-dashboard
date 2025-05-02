@@ -74,16 +74,18 @@ export default class App {
      * Setup event listeners
      */
     setupEventListeners() {
-        // Time period selection
-        this.elements.timePeriodButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.elements.timePeriodButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.currentPeriod = btn.dataset.period;
-                this.updateChart();
-                this.updateStats();
+        // Verificar se os elementos existem antes de adicionar listeners
+        if (this.elements.timePeriodButtons) {
+            this.elements.timePeriodButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.elements.timePeriodButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.currentPeriod = btn.dataset.period;
+                    this.updateChart();
+                    this.updateStats();
+                });
             });
-        });
+        }
         
         // Forest data form
         if (this.elements.form.forestDataForm) {
