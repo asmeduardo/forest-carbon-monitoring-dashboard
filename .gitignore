@@ -1,0 +1,6 @@
+# Composer
+/vendor/
+composer.lock
+
+# Configurações sensíveis
+/config/config.php

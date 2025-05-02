@@ -1,0 +1,19 @@
+{
+    "name": "panax/pagina-pegada-co2",
+    "description": "Forest Carbon Monitoring",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "ForestMonitoring\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Eduardo Melo",
+            "email": "eduardo.melo01992@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    }
+}

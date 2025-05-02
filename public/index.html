@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard de Monitoramento Florestal</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="header-container">
+        <h1>Dashboard de Monitoramento Florestal</h1>
+        <div id="loginFormContainer">
+          <form id="loginForm">
+            <input
+              type="text"
+              name="username"
+              id="username"
+              placeholder="Usuário"
+              required
+            />
+            <input
+              type="password"
+              name="senha"
+              id="password"
+              placeholder="Senha"
+              required
+            />
+            <button type="submit" class="btn btn-primary">Login</button>
+          </form>
+        </div>
+        <div id="logoutSection" style="display: none">
+          <span id="welcomeUser"></span>
+          <button id="logoutBtn" class="btn">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div
+        id="senhaResetContainer"
+        style="
+          display: none;
+          position: absolute;
+          top: 20%;
+          left: 40%;
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+          z-index: 1000;
+        "
+      >
+        <h3>Redefinir senha</h3>
+        <p>Por favor, defina uma nova senha para sua conta.</p>
+        <div class="form-group">
+          <input
+            type="password"
+            id="novaSenha"
+            placeholder="Nova senha"
+            class="form-control"
+          />
+        </div>
+        <div class="form-group" style="margin-top: 16px">
+          <button onclick="void(0)" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+
+      <div class="dashboard">
+        <div class="isometric-container">
+          <div class="isometric-scene">
+            <div class="floating-clouds" id="clouds"></div>
+            <div class="floating-island">
+              <div class="ground"></div>
+              <div class="isometric-grid" id="forestGrid"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-container">
+          <div class="stat-card planted">
+            <div class="stat-label">Árvores Plantadas</div>
+            <div class="stat-value" id="plantedValue">0</div>
+            <div class="stat-label">no período selecionado</div>
+          </div>
+          <div class="stat-card cut">
+            <div class="stat-label">Árvores Suprimidas</div>
+            <div class="stat-value" id="cutValue">0</div>
+            <div class="stat-label">no período selecionado</div>
+          </div>
+          <div class="stat-card balance">
+            <div class="stat-label">Balanço</div>
+            <div class="stat-value" id="balanceValue">0</div>
+            <div class="stat-label">no período selecionado</div>
+          </div>
+          <div class="stat-card co2">
+            <div class="stat-label">Pegada de CO₂</div>
+            <div class="stat-value" id="co2Value">0</div>
+            <div class="stat-label">toneladas no período</div>
+          </div>
+        </div>
+
+        <div class="co2-indicator">
+          <h3>Impacto Ambiental - Pegada de Carbono</h3>
+          <div class="co2-meter">
+            <div
+              class="co2-meter-fill"
+              id="co2MeterFill"
+              style="width: 50%"
+            ></div>
+            <div
+              class="co2-meter-marker"
+              id="co2Neutral"
+              style="left: 50%"
+            ></div>
+          </div>
+          <div id="co2Status">Impacto neutro de carbono</div>
+        </div>
+
+        <div class="chart-container">
+          <div class="chart-controls">
+            <h2>Estatísticas de Plantio e Supressão</h2>
+            <div class="time-selectors">
+              <button class="time-btn active" data-period="day">Diário</button>
+              <button class="time-btn" data-period="week">Semanal</button>
+              <button class="time-btn" data-period="month">Mensal</button>
+              <button class="time-btn" data-period="year">Anual</button>
+            </div>
+          </div>
+          <canvas id="forestChart"></canvas>
+        </div>
+
+        <div class="data-entry" style="display: none">
+          <h2>Cadastro de Dados</h2>
+          <form id="forestDataForm">
+            <div class="form-group">
+              <label for="date">Data:</label>
+              <input type="date" id="date" required />
+            </div>
+            <div class="form-group">
+              <label for="action">Ação:</label>
+              <select id="action" required>
+                <option value="planted">Árvores Plantadas</option>
+                <option value="cut">Árvores Suprimidas</option>
+              </select>
+            </div>
+            <div id="co2InfoContainer" class="form-group">
+              <p id="co2EstimateInfo" class="co2-info">
+                Impacto estimado: <span id="co2Estimate">0</span> kg de CO₂
+              </p>
+            </div>
+            <div class="form-group">
+              <label for="quantity">Quantidade:</label>
+              <input type="number" id="quantity" min="1" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Cadastrar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import modules using ES modules -->
+    <script type="module">
+      // Import main application
+      import { AuthService } from "./assets/js/auth.js";
+      import { ForestChartService } from "./assets/js/chart.js";
+      import { ForestSceneService } from "./assets/js/forest-scene.js";
+      import { CarbonCalculator } from "./assets/js/carbon-calculator.js";
+
+      // Main application entry point
+      document.addEventListener("DOMContentLoaded", function () {
+        // Initialize the app using our app.js module
+        import("./assets/js/app.js").then((module) => {
+          const App = module.default;
+          window.app = new App();
+        });
+      });
+    </script>
+  </body>
+</html>
